@@ -2,6 +2,8 @@
 
 use v5.26;
 
+our $VERSION = v0.1.0;
+
 # Return codes:
 # * 1: Missing or invalid argument or data
 # * 2: External tool error
@@ -10,6 +12,7 @@ my $USAGE = <<~END;
 	Usage: git commit-as <as-user> <arguments>
 	       git commit-as -h | --help
 	       git commit-as --man | --manual
+	       git commit-as --version
 	END
 
 my $MAN = <<~END;
@@ -40,12 +43,15 @@ unless ($useras) {
 	exit 1;
 }
 
-# Handle help, manual and unknown flags
+# Handle help, manual, version, and unknown flags
 if ($useras eq '--help' || $useras eq '-h') {
 	print $USAGE;
 	exit 0;
 } elsif ($useras eq '--man' || $useras eq '--manual') {
 	print $MAN;
+	exit 0;
+elsif ($useras eq '--version') {
+	say "git-commit-as v$VERSION";
 	exit 0;
 } elsif ($useras =~ /^-/) {
 	say STDERR "Error: unknown flag '$useras'";
@@ -63,18 +69,17 @@ if ($invalid) {
 
 # Quote for shell
 my $useras_e = $useras =~ s/'/'\\''/gr;
-$useras_e = qq('$useras');
 
 # Query git config
 my ($ret, $namemissing, $emailmissing);
 
-my $name  = qx[ git config --get users.$useras_e.name ];
+my $name = qx[ git config --get users.'$useras_e'.name ];
 chomp $name;
 $ret = $? >> 8;
 $namemissing = ($ret == 1);
 if ($ret > 1) { say STDERR "git errored with return code $ret while querying config."; exit 2 }
 
-my $email = qx[ git config --get users.$useras_e.email ];
+my $email = qx[ git config --get users.'$useras_e'.email ];
 chomp $email;
 $ret = $? >> 8;
 $emailmissing = ($ret == 1);
@@ -82,7 +87,12 @@ if ($ret > 1) { say STDERR "git errored with return code $ret while querying con
 
 # Handle errors in a more user-friendly way
 if ($namemissing && $emailmissing) {
-	say STDERR qq(Missing section [users "$useras"] in git config. Did you forget to add it?);
+	# Check if other keys exist
+	if (qx[ git config --get-regexp users\\."$useras"\\..* ]) {
+		say STDERR qq(Found unexpected entries under section [users "$useras"] in git config. Did you misspell the keys?\nSee git commit-as --manual for more information.);
+	} else {
+		say STDERR qq(Missing entries under section [users "$useras"] in git config. Did you forget to add it?\nSee git commit-as --manual for more information.);
+	}
 } elsif ($namemissing) {
 	say STDERR qq(Missing 'name' field under section [users "$useras"] in git config. Did you forget to add it?);
 } elsif ($emailmissing) {

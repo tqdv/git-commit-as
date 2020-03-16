@@ -2,6 +2,8 @@
 
 # Use shellcheck to lint
 
+VERSION="0.1.0"
+
 # Return codes:
 # * 1: Missing or invalid argument or data
 # * 2: External tool error
@@ -10,6 +12,7 @@ USAGE="$(cat << END
 Usage: git commit-as <as-user> <arguments>
        git commit-as -h | --help
        git commit-as --man | --manual
+       git commit-as --version
 END
 )"
 
@@ -22,8 +25,8 @@ with git config values users.<as-user>.name and users.<as-user>.email.
 For a user named John, you would add this to your git config:
 \`\`\`
 [users "John"]
-    name = "John Doe"
-    email = "john.doe@example.com"
+	name = "John Doe"
+	email = "john.doe@example.com"
 \`\`\`
 And call it as so: git commit-as John <arguments>
 
@@ -47,7 +50,7 @@ then
 	exit 1
 fi
 
-# Handle help, manual and unknown flags
+# Handle help, manual, version, and unknown flags
 if [ "$useras" = '--help' ] || [ "$useras" = '-h' ]
 then
 	echo "$USAGE"
@@ -56,10 +59,14 @@ elif [ "$useras" = '--man' ] || [ "$useras" = '--manual' ]
 then
 	echo "$MAN"
 	exit 0
+elif [ "$useras" = '--version' ]
+then
+	echo "git-commit-as v$VERSION"
+	exit 0
 elif [ "$(echo "$useras" | cut -c1)" = '-' ] # First character is '-'
 then
 	echo "Error: unknown flag '$useras'" >&2
-    echo "$USAGE" >&2
+	echo "$USAGE" >&2
 	exit 1
 fi
 
@@ -92,7 +99,15 @@ fi
 # Handle errors in a more user-friendly way
 if [ "$namemissing" ] && [ "$emailmissing" ]
 then
-	echo "Missing section [users \"$useras\"] in git config. Did you forget to add it?" >&2
+	# Check if other keys exist
+	if git config --get-regexp users\."$useras"\\..* >/dev/null
+	then
+		echo "Found unexpected entries under section [users \"$useras\"] in git config. Did you misspell the keys?" >&2
+		echo "See git commit-as --manual for more information." >&2
+	else
+		echo "Missing entries under section [users \"$useras\"] in git config. Did you forget to add it?" >&2
+		echo "See git commit-as --manual for more information." >&2
+	fi
 elif [ "$namemissing" ]
 then
 	echo "Missing 'name' field under section [users \"$useras\"] in git config. Did you forget to add it?" >&2
