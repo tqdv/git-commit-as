@@ -1,0 +1,112 @@
+#!/bin/sh
+
+# Use shellcheck to lint
+
+# Return codes:
+# * 1: Missing or invalid argument or data
+# * 2: External tool error
+
+USAGE="$(cat << END
+Usage: git commitas <as-user> <arguments>
+       git commitas -h | --help
+       git commitas --man | --manual
+END
+)"
+
+MAN="$(cat << END
+$USAGE
+
+This script overrides the GIT_AUTHOR_* and GIT_COMMITTER_* environment variables
+with git config values users.<as-user>.name and users.<as-user>.email.
+
+For a user named John, you would add this to your git config:
+\`\`\`
+[users "John"]
+    name = "John Doe"
+    email = "john.doe@example.com"
+\`\`\`
+And call it as so: git commitas John <arguments>
+
+Note that <as-user> is case-sensitive and can not start with a hyphen.
+
+Dependencies: sh, [cat, cut, tr, env](probably POSIX), git
+
+Licensed by Tilwa Qendov under The Artistic 2.0 license
+END
+)"
+
+
+# Check arguments
+useras=$1
+shift
+
+if [ -z "$useras" ]
+then
+	echo "Error: missing as-user" >&2
+	echo "$USAGE" >&2
+	exit 1
+fi
+
+# Handle help, manual and unknown flags
+if [ "$useras" = '--help' ] || [ "$useras" = '-h' ]
+then
+	echo "$USAGE"
+	exit 0
+elif [ "$useras" = '--man' ] || [ "$useras" = '--manual' ]
+then
+	echo "$MAN"
+	exit 0
+elif [ "$(echo "$useras" | cut -c1)" = '-' ] # First character is '-'
+then
+	echo "Error: unknown flag '$useras'" >&2
+    echo "$USAGE" >&2
+	exit 1
+fi
+
+# Filter invalid characters
+# NB: command line can't contain the null byte anyways
+invalid="$(echo "$useras" | tr -d '\n\000')"
+if [ "$useras" != "$invalid" ] # Some characters were stripped
+then
+	echo "Error: invalid as-user '$useras'. Newlines and null characters aren't allowed." >&2
+	exit 1
+fi
+
+# Query git config
+name="$(git config --get "users.$useras.name")"
+ret=$?
+namemissing="$([ $ret -eq 1 ] && echo "1")"
+if [ $ret -gt 1 ]
+	then echo "git errored with return code $ret while querying config." >&2
+	exit 2
+fi
+
+email="$(git config --get "users.$useras.email")"
+ret=$?
+emailmissing="$([ $ret -eq 1 ] && echo "1")"
+if [ $? -gt 1 ]
+	then echo "git errored with return code $ret while querying config." >&2
+	exit 2
+fi
+
+# Handle errors in a more user-friendly way
+if [ "$namemissing" ] && [ "$emailmissing" ]
+then
+	echo "Missing section [users \"$useras\"] in git config. Did you forget to add it?" >&2
+elif [ "$namemissing" ]
+then
+	echo "Missing 'name' field under section [users \"$useras\"] in git config. Did you forget to add it?" >&2
+elif [ "$emailmissing" ]
+then
+	echo "Missing 'email' field under section [users \"$useras\"] in git config. Did you forget to add it?" >&2
+fi
+if [ "$namemissing" ] || [ "$emailmissing" ]
+then
+	exit 2
+fi
+
+echo "Committing as \"$name\" <$email>."
+
+exec env "GIT_AUTHOR_NAME=$name" "GIT_AUTHOR_EMAIL=$email" \
+	"GIT_COMMITTER_NAME=$name" "GIT_COMMITTER_EMAIL=$email" \
+	git commit "$@"
