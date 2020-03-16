@@ -7,9 +7,9 @@ use v5.26;
 # * 2: External tool error
 
 my $USAGE = <<~END;
-	Usage: git commitas <as-user> <arguments>
-	       git commitas -h | --help
-	       git commitas --man | --manual
+	Usage: git commit-as <as-user> <arguments>
+	       git commit-as -h | --help
+	       git commit-as --man | --manual
 	END
 
 my $MAN = <<~END;
@@ -23,7 +23,7 @@ my $MAN = <<~END;
 		name = "John Doe"
 		email = "john.doe\@example.com"
 	```
-	And call it as so: git commitas John <arguments>
+	And call it as so: git commit-as John <arguments>
 
 	Note that <as-user> is case-sensitive and can not start with a hyphen.
 
