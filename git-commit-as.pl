@@ -2,7 +2,7 @@
 
 use v5.26;
 
-our $VERSION = v0.1.0;
+our $VERSION = v0.1.1;
 
 # Return codes:
 # * 1: Missing or invalid argument or data
@@ -35,7 +35,7 @@ my $MAN = <<~END;
 	Licensed by Tilwa Qendov under The Artistic 2.0 license
 	END
 
-# Check arguments
+# Check first argument
 my $useras = shift @ARGV;
 unless ($useras) {
 	say STDERR "Error: missing as-user";
@@ -44,6 +44,7 @@ unless ($useras) {
 }
 
 # Handle help, manual, version, and unknown flags
+# NB: $useras is the first argument, which can be a flag
 if ($useras eq '--help' || $useras eq '-h') {
 	print $USAGE;
 	exit 0;

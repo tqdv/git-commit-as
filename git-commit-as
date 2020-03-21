@@ -2,7 +2,7 @@
 
 # Use shellcheck to lint
 
-VERSION="0.1.0"
+VERSION="0.1.1"
 
 # Return codes:
 # * 1: Missing or invalid argument or data
@@ -39,11 +39,8 @@ END
 )"
 
 
-# Check arguments
-useras=$1
-shift
-
-if [ -z "$useras" ]
+# Check first argument
+if [ -z "$1" ]
 then
 	echo "Error: missing as-user" >&2
 	echo "$USAGE" >&2
@@ -51,24 +48,27 @@ then
 fi
 
 # Handle help, manual, version, and unknown flags
-if [ "$useras" = '--help' ] || [ "$useras" = '-h' ]
+if [ "$1" = '--help' ] || [ "$1" = '-h' ]
 then
 	echo "$USAGE"
 	exit 0
-elif [ "$useras" = '--man' ] || [ "$useras" = '--manual' ]
+elif [ "$1" = '--man' ] || [ "$1" = '--manual' ]
 then
 	echo "$MAN"
 	exit 0
-elif [ "$useras" = '--version' ]
+elif [ "$1" = '--version' ]
 then
 	echo "git-commit-as v$VERSION"
 	exit 0
-elif [ "$(echo "$useras" | cut -c1)" = '-' ] # First character is '-'
+elif [ "$(echo "$1" | cut -c1)" = '-' ] # First character is '-'
 then
-	echo "Error: unknown flag '$useras'" >&2
+	echo "Error: unknown flag '$1'" >&2
 	echo "$USAGE" >&2
 	exit 1
 fi
+
+useras=$1
+shift
 
 # Filter invalid characters
 # NB: command line can't contain the null byte anyways
